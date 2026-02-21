@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type baseRepo[E any, U any] struct {
+type BaseRepo[E any, U any] struct {
 	db        *DB
 	tableName string
 	idCol     string
@@ -18,11 +18,11 @@ type baseRepo[E any, U any] struct {
 
 var goquDB = goqu.Dialect("postgres")
 
-func newBaseRepo[E any, U any](db *DB, tableName, idCol string) baseRepo[E, U] {
-	return baseRepo[E, U]{db: db, tableName: tableName, idCol: idCol}
+func NewBaseRepo[E any, U any](db *DB, tableName, idCol string) BaseRepo[E, U] {
+	return BaseRepo[E, U]{db: db, tableName: tableName, idCol: idCol}
 }
 
-func (r *baseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
+func (r *BaseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
 	sql, args, err := goquDB.Insert(r.tableName).
 		Rows(entity).
 		Returning(goqu.Star()).
@@ -44,7 +44,7 @@ func (r *baseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
 	return &result, nil
 }
 
-func (r *baseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
+func (r *BaseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 	sql, args, err := goquDB.From(r.tableName).
 		Where(goqu.C(r.idCol).Eq(id)).
 		ToSQL()
@@ -68,7 +68,7 @@ func (r *baseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 	return &result, nil
 }
 
-func (r *baseRepo[E, U]) Update(ctx context.Context, id uuid.UUID, update U) (*E, error) {
+func (r *BaseRepo[E, U]) Update(ctx context.Context, id uuid.UUID, update U) (*E, error) {
 	f, err := fields(update)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "build update fields")
