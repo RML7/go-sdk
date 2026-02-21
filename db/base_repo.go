@@ -31,7 +31,7 @@ func (r *BaseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
 		return nil, xerrors.WithMessage(err, "build insert query")
 	}
 
-	rows, err := r.db.Query(ctx, sql, args...)
+	rows, err := r.db.Executor(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "exec insert query")
 	}
@@ -52,7 +52,7 @@ func (r *BaseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 		return nil, xerrors.WithMessage(err, "build select query")
 	}
 
-	rows, err := r.db.Query(ctx, sql, args...)
+	rows, err := r.db.Executor(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "exec select query")
 	}
@@ -87,7 +87,7 @@ func (r *BaseRepo[E, U]) Update(ctx context.Context, id uuid.UUID, update U) (*E
 		return nil, xerrors.WithMessage(err, "build update query")
 	}
 
-	rows, err := r.db.Query(ctx, sql, args...)
+	rows, err := r.db.Executor(ctx).Query(ctx, sql, args...)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "exec update query")
 	}

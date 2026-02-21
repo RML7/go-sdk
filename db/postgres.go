@@ -12,6 +12,15 @@ type DB struct {
 	*pgxpool.Pool
 }
 
+// Executor возвращает DBExecutor из контекста (транзакция) или основной пул
+func (db *DB) Executor(ctx context.Context) DBExecutor {
+	if tx := extractTx(ctx); tx != nil {
+		return tx
+	}
+
+	return db.Pool
+}
+
 func NewDB(ctx context.Context, dsn string) (*DB, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
