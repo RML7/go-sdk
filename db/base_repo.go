@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type BaseRepo[E any, U any] struct {
+type BaseRepo[E any, U any, F Filter] struct {
 	db        *DB
 	tableName string
 	idCol     string
@@ -26,11 +26,11 @@ type Filter interface {
 	GetExpressions() []goqu.Expression
 }
 
-func NewBaseRepo[E any, U any](db *DB, tableName, idCol string) BaseRepo[E, U] {
-	return BaseRepo[E, U]{db: db, tableName: tableName, idCol: idCol}
+func NewBaseRepo[E any, U any, F Filter](db *DB, tableName, idCol string) BaseRepo[E, U, F] {
+	return BaseRepo[E, U, F]{db: db, tableName: tableName, idCol: idCol}
 }
 
-func (r *BaseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
+func (r *BaseRepo[E, U, F]) Create(ctx context.Context, entity *E) (*E, error) {
 	sql, args, err := goquDB.Insert(r.tableName).
 		Rows(entity).
 		Returning(goqu.Star()).
@@ -52,7 +52,7 @@ func (r *BaseRepo[E, U]) Create(ctx context.Context, entity *E) (*E, error) {
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
+func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 	sql, args, err := goquDB.From(r.tableName).
 		Where(goqu.C(r.idCol).Eq(id)).
 		ToSQL()
@@ -76,7 +76,7 @@ func (r *BaseRepo[E, U]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U]) List(ctx context.Context, filter Filter) ([]*E, error) {
+func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F) ([]*E, error) {
 	query := goquDB.From(r.tableName).
 		Offset(filter.GetOffset()).
 		Limit(filter.GetLimit()).
@@ -101,7 +101,7 @@ func (r *BaseRepo[E, U]) List(ctx context.Context, filter Filter) ([]*E, error) 
 	return result, nil
 }
 
-func (r *BaseRepo[E, U]) Count(ctx context.Context, filter Filter) (int64, error) {
+func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (int64, error) {
 	query := goquDB.Select(goqu.COUNT(goqu.Star())).
 		From(r.tableName).
 		Where(filter.GetExpressions()...)
@@ -124,7 +124,7 @@ func (r *BaseRepo[E, U]) Count(ctx context.Context, filter Filter) (int64, error
 	return count, nil
 }
 
-func (r *BaseRepo[E, U]) Exists(ctx context.Context, filter Filter) (bool, error) {
+func (r *BaseRepo[E, U, F]) Exists(ctx context.Context, filter F) (bool, error) {
 	query := goquDB.Select(
 		goqu.L("EXISTS (?)",
 			goquDB.From(r.tableName).
@@ -150,7 +150,7 @@ func (r *BaseRepo[E, U]) Exists(ctx context.Context, filter Filter) (bool, error
 	return exists, nil
 }
 
-func (r *BaseRepo[E, U]) Update(ctx context.Context, id uuid.UUID, update *U) (*E, error) {
+func (r *BaseRepo[E, U, F]) Update(ctx context.Context, id uuid.UUID, update *U) (*E, error) {
 	f, err := fields(*update)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "build update fields")
