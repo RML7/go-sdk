@@ -101,7 +101,7 @@ func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F) ([]*E, error) {
 	return result, nil
 }
 
-func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (int64, error) {
+func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (uint32, error) {
 	query := goquDB.Select(goqu.COUNT(goqu.Star())).
 		From(r.tableName).
 		Where(filter.GetExpressions()...)
@@ -116,7 +116,7 @@ func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (int64, error) 
 		return 0, xerrors.WithMessage(err, "exec count query")
 	}
 
-	count, err := pgx.CollectOneRow(rows, pgx.RowTo[int64])
+	count, err := pgx.CollectOneRow(rows, pgx.RowTo[uint32])
 	if err != nil {
 		return 0, xerrors.WithMessage(err, "scan count")
 	}
