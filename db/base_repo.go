@@ -52,10 +52,18 @@ func (r *BaseRepo[E, U, F]) Create(ctx context.Context, entity *E) (*E, error) {
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
-	sql, args, err := goquDB.From(r.tableName).
-		Where(goqu.C(r.idCol).Eq(id)).
-		ToSQL()
+type ReadOption func(*goqu.SelectDataset) *goqu.SelectDataset
+
+func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID, opts ...ReadOption) (*E, error) {
+	query := goquDB.From(r.tableName).
+		Where(goqu.C(r.idCol).Eq(id))
+
+	// Apply options
+	for _, opt := range opts {
+		query = opt(query)
+	}
+
+	sql, args, err := query.ToSQL()
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "build select query")
 	}
@@ -76,12 +84,17 @@ func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID) (*E, error) {
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F) ([]*E, error) {
+func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F, opts ...ReadOption) ([]*E, error) {
 	query := goquDB.From(r.tableName).
 		Offset(filter.GetOffset()).
 		Limit(filter.GetLimit()).
 		Order(filter.GetOrder()...).
 		Where(filter.GetExpressions()...)
+
+	// Apply options
+	for _, opt := range opts {
+		query = opt(query)
+	}
 
 	sql, args, err := query.ToSQL()
 	if err != nil {
