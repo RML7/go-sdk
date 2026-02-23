@@ -52,6 +52,32 @@ func (r *BaseRepo[E, U, F]) Create(ctx context.Context, entity *E) (*E, error) {
 	return &result, nil
 }
 
+func (r *BaseRepo[E, U, F]) BulkCreate(ctx context.Context, entities []*E) ([]*E, error) {
+	if len(entities) == 0 {
+		return []*E{}, nil
+	}
+
+	sql, args, err := goquDB.Insert(r.tableName).
+		Rows(entities).
+		Returning(goqu.Star()).
+		ToSQL()
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "build bulk insert query")
+	}
+
+	rows, err := r.db.Executor(ctx).Query(ctx, sql, args...)
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "exec bulk insert query")
+	}
+
+	result, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[E])
+	if err != nil {
+		return nil, xerrors.WithMessage(err, "scan rows")
+	}
+
+	return result, nil
+}
+
 type ReadOption func(*goqu.SelectDataset) *goqu.SelectDataset
 
 func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID, opts ...ReadOption) (*E, error) {
