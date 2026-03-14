@@ -7,11 +7,10 @@ import (
 	"github.com/RML7/go-sdk/xerrors"
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
-type BaseRepo[E any, U any, F Filter] struct {
+type BaseRepo[E any, U any, F Filter, ID comparable] struct {
 	db        *DB
 	tableName string
 	idCol     string
@@ -26,11 +25,26 @@ type Filter interface {
 	GetExpressions() []goqu.Expression
 }
 
-func NewBaseRepo[E any, U any, F Filter](db *DB, tableName, idCol string) BaseRepo[E, U, F] {
-	return BaseRepo[E, U, F]{db: db, tableName: tableName, idCol: idCol}
+type BaseRepoOptions struct {
+	TableName string
+	IDCol     string
 }
 
-func (r *BaseRepo[E, U, F]) Create(ctx context.Context, entity *E) (*E, error) {
+func NewBaseRepo[E any, U any, F Filter, ID comparable](db *DB, opts BaseRepoOptions) (BaseRepo[E, U, F, ID], error) {
+	if db == nil {
+		return BaseRepo[E, U, F, ID]{}, xerrors.Errorf("db is required")
+	}
+	if opts.TableName == "" {
+		return BaseRepo[E, U, F, ID]{}, xerrors.Errorf("table name is required")
+	}
+	if opts.IDCol == "" {
+		return BaseRepo[E, U, F, ID]{}, xerrors.Errorf("id column is required")
+	}
+
+	return BaseRepo[E, U, F, ID]{db: db, tableName: opts.TableName, idCol: opts.IDCol}, nil
+}
+
+func (r *BaseRepo[E, U, F, ID]) Create(ctx context.Context, entity *E) (*E, error) {
 	sql, args, err := goquDB.Insert(r.tableName).
 		Rows(entity).
 		Returning(goqu.Star()).
@@ -52,7 +66,7 @@ func (r *BaseRepo[E, U, F]) Create(ctx context.Context, entity *E) (*E, error) {
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U, F]) BulkCreate(ctx context.Context, entities []*E) ([]*E, error) {
+func (r *BaseRepo[E, U, F, ID]) BulkCreate(ctx context.Context, entities []*E) ([]*E, error) {
 	if len(entities) == 0 {
 		return []*E{}, nil
 	}
@@ -80,11 +94,10 @@ func (r *BaseRepo[E, U, F]) BulkCreate(ctx context.Context, entities []*E) ([]*E
 
 type ReadOption func(*goqu.SelectDataset) *goqu.SelectDataset
 
-func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID, opts ...ReadOption) (*E, error) {
+func (r *BaseRepo[E, U, F, ID]) Get(ctx context.Context, id ID, opts ...ReadOption) (*E, error) {
 	query := goquDB.From(r.tableName).
 		Where(goqu.C(r.idCol).Eq(id))
 
-	// Apply options
 	for _, opt := range opts {
 		query = opt(query)
 	}
@@ -110,14 +123,13 @@ func (r *BaseRepo[E, U, F]) Get(ctx context.Context, id uuid.UUID, opts ...ReadO
 	return &result, nil
 }
 
-func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F, opts ...ReadOption) ([]*E, error) {
+func (r *BaseRepo[E, U, F, ID]) List(ctx context.Context, filter F, opts ...ReadOption) ([]*E, error) {
 	query := goquDB.From(r.tableName).
 		Offset(filter.GetOffset()).
 		Limit(filter.GetLimit()).
 		Order(filter.GetOrder()...).
 		Where(filter.GetExpressions()...)
 
-	// Apply options
 	for _, opt := range opts {
 		query = opt(query)
 	}
@@ -140,7 +152,7 @@ func (r *BaseRepo[E, U, F]) List(ctx context.Context, filter F, opts ...ReadOpti
 	return result, nil
 }
 
-func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (uint32, error) {
+func (r *BaseRepo[E, U, F, ID]) Count(ctx context.Context, filter F) (uint32, error) {
 	query := goquDB.Select(goqu.COUNT(goqu.Star())).
 		From(r.tableName).
 		Where(filter.GetExpressions()...)
@@ -163,7 +175,7 @@ func (r *BaseRepo[E, U, F]) Count(ctx context.Context, filter F) (uint32, error)
 	return count, nil
 }
 
-func (r *BaseRepo[E, U, F]) Exists(ctx context.Context, filter F) (bool, error) {
+func (r *BaseRepo[E, U, F, ID]) Exists(ctx context.Context, filter F) (bool, error) {
 	query := goquDB.Select(
 		goqu.L("EXISTS (?)",
 			goquDB.From(r.tableName).
@@ -189,7 +201,7 @@ func (r *BaseRepo[E, U, F]) Exists(ctx context.Context, filter F) (bool, error) 
 	return exists, nil
 }
 
-func (r *BaseRepo[E, U, F]) Update(ctx context.Context, id uuid.UUID, update *U) (*E, error) {
+func (r *BaseRepo[E, U, F, ID]) Update(ctx context.Context, id ID, update *U) (*E, error) {
 	f, err := fields(*update)
 	if err != nil {
 		return nil, xerrors.WithMessage(err, "build update fields")
