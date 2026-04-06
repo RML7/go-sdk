@@ -7,16 +7,11 @@ import (
 )
 
 var globalCloser = closer{
-	funcsWithContext: make([]func(ctx context.Context) error, 0),
-	funcs:            make([]func() error, 0),
+	funcs: make([]func(ctx context.Context) error, 0),
 }
 
-func AddFunc(f ...func() error) {
+func AddFunc(f ...func(ctx context.Context) error) {
 	globalCloser.addFunc(f...)
-}
-
-func AddFuncWithContext(f ...func(ctx context.Context) error) {
-	globalCloser.addFuncWithContext(f...)
 }
 
 func CloseAll(ctx context.Context) {
@@ -24,27 +19,16 @@ func CloseAll(ctx context.Context) {
 }
 
 type closer struct {
-	funcs            []func() error
-	funcsWithContext []func(ctx context.Context) error
+	funcs []func(ctx context.Context) error
 }
 
-func (c *closer) addFuncWithContext(f ...func(ctx context.Context) error) {
-	c.funcsWithContext = append(c.funcsWithContext, f...)
-}
-
-func (c *closer) addFunc(f ...func() error) {
+func (c *closer) addFunc(f ...func(ctx context.Context) error) {
 	c.funcs = append(c.funcs, f...)
 }
 
 func (c *closer) closeAll(ctx context.Context) {
-	for _, f := range c.funcs {
-		if err := f(); err != nil {
-			slog.Error(fmt.Sprintf("error close: %s", err.Error()))
-		}
-	}
-
-	for _, f := range c.funcsWithContext {
-		if err := f(ctx); err != nil {
+	for i := len(c.funcs) - 1; i >= 0; i-- {
+		if err := c.funcs[i](ctx); err != nil {
 			slog.Error(fmt.Sprintf("error close: %s", err.Error()))
 		}
 	}
