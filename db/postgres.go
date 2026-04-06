@@ -36,7 +36,7 @@ func NewDB(ctx context.Context, dsn string) (*DB, error) {
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
 
-	closer.AddFunc(func() error {
+	closer.AddFunc(func(ctx context.Context) error {
 		pool.Close()
 		return nil
 	})
