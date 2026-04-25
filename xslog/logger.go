@@ -35,7 +35,5 @@ func Init(cfg LoggerConfig) {
 		base = slog.NewJSONHandler(cfg.Writer, opts)
 	}
 
-	slog.SetDefault(slog.New(NewContextHandler(base, Config{
-		ContextAttrs: cfg.ContextAttrs,
-	})))
+	slog.SetDefault(slog.New(newContextHandler(base, cfg.ContextAttrs)))
 }

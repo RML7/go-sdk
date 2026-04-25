@@ -5,25 +5,21 @@ import (
 	"log/slog"
 )
 
-type Config struct {
-	// ContextAttrs maps log attribute names to context keys.
+type contextHandler struct {
+	slog.Handler
+
 	ContextAttrs map[string]interface{}
 }
 
-type ContextHandler struct {
-	slog.Handler
-	cfg Config
-}
-
-func NewContextHandler(base slog.Handler, cfg Config) *ContextHandler {
-	return &ContextHandler{
-		Handler: base,
-		cfg:     cfg,
+func newContextHandler(base slog.Handler, ContextAttrs map[string]interface{}) *contextHandler {
+	return &contextHandler{
+		Handler:      base,
+		ContextAttrs: ContextAttrs,
 	}
 }
 
-func (h *ContextHandler) Handle(ctx context.Context, record slog.Record) error {
-	for attrName, ctxKey := range h.cfg.ContextAttrs {
+func (h *contextHandler) Handle(ctx context.Context, record slog.Record) error {
+	for attrName, ctxKey := range h.ContextAttrs {
 		val := ctx.Value(ctxKey)
 		if val == nil {
 			continue
