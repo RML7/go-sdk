@@ -6,6 +6,17 @@ import (
 	"os"
 )
 
+const LevelFatal = slog.Level(12)
+
+func replaceLevel(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.LevelKey {
+		if level, ok := a.Value.Any().(slog.Level); ok && level == LevelFatal {
+			a.Value = slog.StringValue("FATAL")
+		}
+	}
+	return a
+}
+
 func Debug(msg string, args ...any) {
 	slog.Debug(msg, args...)
 }
@@ -23,7 +34,7 @@ func Error(msg string, err error, args ...any) {
 }
 
 func Fatal(msg string, err error, args ...any) {
-	slog.Error(msg, append([]any{"error", err}, args...)...)
+	slog.Log(context.Background(), LevelFatal, msg, append([]any{"error", err}, args...)...)
 	os.Exit(1)
 }
 
@@ -44,6 +55,6 @@ func ErrorContext(ctx context.Context, msg string, err error, args ...any) {
 }
 
 func FatalContext(ctx context.Context, msg string, err error, args ...any) {
-	slog.ErrorContext(ctx, msg, append([]any{"error", err}, args...)...)
+	slog.Log(ctx, LevelFatal, msg, append([]any{"error", err}, args...)...)
 	os.Exit(1)
 }

@@ -25,7 +25,10 @@ func Init(cfg LoggerConfig) {
 		cfg.Writer = os.Stdout
 	}
 
-	opts := &slog.HandlerOptions{Level: cfg.Level}
+	opts := &slog.HandlerOptions{
+		Level:       cfg.Level,
+		ReplaceAttr: replaceLevel,
+	}
 
 	var base slog.Handler
 	switch cfg.Format {
