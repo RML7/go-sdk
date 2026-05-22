@@ -32,16 +32,16 @@ func NewDB(ctx context.Context, cfg Config) (*DB, error) {
 
 	poolCfg, err := pgxpool.ParseConfig(cfg.DSN)
 	if err != nil {
-		return nil, xerrors.Errorf("parse dsn: %w", err)
+		return nil, xerrors.WithMessage(err, "failed parse dsn")
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		return nil, xerrors.Errorf("create pool: %w", err)
+		return nil, xerrors.WithMessage(err, "failed create pool")
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		return nil, xerrors.Errorf("ping db: %w", err)
+		return nil, xerrors.WithMessage(err, "failed ping db")
 	}
 
 	closer.AddFunc(func(ctx context.Context) error {
